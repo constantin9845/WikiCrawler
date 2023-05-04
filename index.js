@@ -2,7 +2,7 @@ const https = require('https');
 const fs = require('fs');
 const { StringDecoder } = require('string_decoder');
 
-const url = 'https://en.m.wikipedia.org/wiki/Nobel_Prize_in_Physics';
+const url = 'https://en.m.wikipedia.org/wiki/Henrik_Ibsen';
 
 https.get(url, (response)=>{
     let data = '';
@@ -103,7 +103,6 @@ https.get(url, (response)=>{
                 }
 
                 imageLink = imageLink.substring(0,end+3)
-                console.log(imageLink)
             }
             if(start === -1){
                 console.log('No image found')
@@ -112,27 +111,88 @@ https.get(url, (response)=>{
             // Image caption
             start = bio.indexOf(`infobox-caption`);
             if(start != -1){
-                let imageCaption = bio.substring(start);
+                imageCaption = bio.substring(start);
+
+                // check if any links present in string - delete <a> tag
+                if(imageCaption.includes(`<a`)){
+                    firstLink = imageCaption.indexOf(`<a`);
+                    temp = imageCaption.substring(firstLink)
+                    firstLinkEnd = temp.indexOf(`>`);
+                    firstLink = temp.substring(0,firstLinkEnd+1)
+
+                    imageCaption = imageCaption.replace(firstLink,'');
+                    imageCaption = imageCaption.replace(`</a>`, '');
+
+                }
                 start = imageCaption.indexOf(`>`);
                 end = imageCaption.indexOf('<');
-                test = imageCaption.substring(start+1,end);
-                imageCaption = test;
-                console.log(imageCaption)
+                imageCaption = imageCaption.substring(start+1,end);
             }
             if(start === -1){
                 console.log('No image caption found.')
+                imageCaption = undefined;
             }
 
-            // infobox header(s)
-            
+            // infobox label(s) + infobox link(s)
+            // as json object -> {label : link}, stored in 1 shared json object -> { {label : link}, {label : link},... }
+            let infoBoxesLeft = true;
+            let bioLabels = bio.substring(bio.indexOf(`infobox-label`));
+            let labels_links = {
+                "labels": [],
+                "links": []
+            }
 
-            // infobox label(s)
 
-            
-            // infobox link(s)
+            while(infoBoxesLeft){
+
+                // grab label
+                let label = bioLabels.substring(bioLabels.indexOf('>')+1,bioLabels.indexOf('<'))
+                bioLabels = bioLabels.substring(bioLabels.indexOf('<'));
+
+                // grab link
+                let link = bioLabels.substring(bioLabels.indexOf(`infobox-data`), bioLabels.indexOf(`</td>`));
+
+
+                // filter link
+                let linkFilter = true
+                let linkStringCollector = [];
+                while(linkFilter){
+                    // check if data left in link
+                    if(link.includes('<')){
+                        let linkItem = link.substring(link.indexOf(`>`)+1, link.indexOf(`<`));
+                        linkStringCollector.push(linkItem)
+                        link = link.substring(link.indexOf(`<`)+1)
+                    }
+                    else{
+                        linkFilter = false;
+                    };
+                    
+                };
+
+                let i = linkStringCollector.length-1;
+                while(i >= 0){
+                    if(linkStringCollector[i].length <= 2){
+                        linkStringCollector.splice(i, 1)
+                    }
+                    i = i - 1;
+                }
+
+                labels_links.labels.push(label);
+                labels_links.links.push(linkStringCollector)
+
+                // FIGURE LOOP TO GET ALL BIO BOXES 
+                bioLabels = bioLabels.substring(bioLabels.indexOf('infobox-label'));
+                console.log(bioLabels)
+                infoBoxesLeft = false;
+            }
+
+
+            let result = [imageLink, imageCaption,labels_links];
+            return result
         }
 
-        filterBio()
+        const bioData = filterBio()
+        console.log(bioData)
 
         // json object 
         let jsonObject = {
