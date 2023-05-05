@@ -1,8 +1,10 @@
 const https = require('https');
 const fs = require('fs');
 const { StringDecoder } = require('string_decoder');
+const { count } = require('console');
+const { title } = require('process');
 
-const url = 'https://en.m.wikipedia.org/wiki/Henrik_Ibsen';
+const url = 'https://en.m.wikipedia.org/wiki/Bigfoot';
 
 https.get(url, (response)=>{
     let data = '';
@@ -37,7 +39,7 @@ https.get(url, (response)=>{
         }
         deleteData('<body','</body>');
 
-        // GET TAGS 
+        // GET WORK CONTENT 
         function locateParticle(particleStart, particleEnd){
             const start = data.indexOf(particleStart);
             const end = data.indexOf(particleEnd);
@@ -80,8 +82,11 @@ https.get(url, (response)=>{
             let bioEnd = mainData.indexOf('</table>');
             let rawBio = mainData.substring(bioStart, bioEnd)
 
+            // get all main text containers into 1
+            let rawTextContainer = mainData.substring(mainData.indexOf(`mw-parser-output`));
 
-            dataCollection = [mainData, rawBio]
+
+            dataCollection = [mainData, rawBio, rawTextContainer]
             return dataCollection;
         }
 
@@ -150,15 +155,17 @@ https.get(url, (response)=>{
                 bioLabels = bioLabels.substring(bioLabels.indexOf('<'));
 
                 // grab link
-                let link = bioLabels.substring(bioLabels.indexOf(`infobox-data`), bioLabels.indexOf(`</td>`));
+                let link = bioLabels.substring(bioLabels.indexOf(`infobox-data`), bioLabels.indexOf(`</td>`)+1);
 
 
                 // filter link
                 let linkFilter = true
                 let linkStringCollector = [];
+
                 while(linkFilter){
                     // check if data left in link
                     if(link.includes('<')){
+
                         let linkItem = link.substring(link.indexOf(`>`)+1, link.indexOf(`<`));
                         linkStringCollector.push(linkItem)
                         link = link.substring(link.indexOf(`<`)+1)
@@ -171,7 +178,7 @@ https.get(url, (response)=>{
 
                 let i = linkStringCollector.length-1;
                 while(i >= 0){
-                    if(linkStringCollector[i].length <= 2){
+                    if(linkStringCollector[i].length <= 1){
                         linkStringCollector.splice(i, 1)
                     }
                     i = i - 1;
@@ -182,17 +189,73 @@ https.get(url, (response)=>{
 
                 // FIGURE LOOP TO GET ALL BIO BOXES 
                 bioLabels = bioLabels.substring(bioLabels.indexOf('infobox-label'));
-                console.log(bioLabels)
                 infoBoxesLeft = false;
+
+                if(bioLabels.includes('infobox-label')){
+                    infoBoxesLeft = true;
+                }
+                else{
+                    infoBoxesLeft = false;
+                }
+
+                
             }
 
-
-            let result = [imageLink, imageCaption,labels_links];
+            let result = [imageLink, imageCaption, labels_links];
             return result
         }
 
-        const bioData = filterBio()
-        console.log(bioData)
+        function filterTextSection(){
+            let rawTextData = mainData[2]
+
+            // calc amount of sections => // Do not use last section => external links
+            let temp = rawTextData;
+            let sectionOccurs = '<section'
+            let count = 0
+            let searching = true
+
+            while(searching){
+                if(temp.includes(sectionOccurs)){
+                    count = count + 1;
+                    temp = temp.substring(temp.indexOf(sectionOccurs)+1);
+                }
+                else{
+                    searching = false
+                }
+            }
+
+            count = count - 2
+            console.log(count)
+
+            let titlesPool = rawTextData;
+            
+
+            // If first section = no title
+            for(let i = 0; i < count; i++){
+                // collect section titles
+                let sectionTitleStart = titlesPool.indexOf('section-heading');
+                titlesPool = titlesPool.substring(sectionTitleStart);
+                let sectionTitleEnd = titlesPool.indexOf('</span>');
+
+                let sectionTitle = titlesPool.substring(0, sectionTitleEnd)
+                
+
+                let start = sectionTitle.indexOf('<span class="mw-headline"');
+
+                sectionTitle = sectionTitle.substring(start)
+                sectionTitle = sectionTitle.substring(sectionTitle.indexOf('>'))
+
+                console.log(sectionTitle)
+
+                titlesPool = titlesPool.substring(titlesPool.indexOf(`${sectionTitle}`))
+
+                // collect section contents
+            }
+
+        }
+
+        const bioData = filterBio();
+        filterTextSection()
 
         // json object 
         let jsonObject = {
