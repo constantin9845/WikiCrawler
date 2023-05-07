@@ -4,7 +4,7 @@ const { StringDecoder } = require('string_decoder');
 const { count } = require('console');
 const { title } = require('process');
 
-const url = 'https://en.m.wikipedia.org/wiki/Bigfoot';
+const url = 'https://en.m.wikipedia.org/wiki/Henrik_Ibsen';
 
 https.get(url, (response)=>{
     let data = '';
@@ -225,12 +225,12 @@ https.get(url, (response)=>{
             }
 
             count = count - 2
-            console.log(count)
 
             let titlesPool = rawTextData;
+            let sectionTitles = []
+            let sectionTexts = []
             
 
-            // If first section = no title
             for(let i = 0; i < count; i++){
                 // collect section titles
                 let sectionTitleStart = titlesPool.indexOf('section-heading');
@@ -245,17 +245,78 @@ https.get(url, (response)=>{
                 sectionTitle = sectionTitle.substring(start)
                 sectionTitle = sectionTitle.substring(sectionTitle.indexOf('>'))
 
-                console.log(sectionTitle)
+                sectionTitles.push(sectionTitle);
 
                 titlesPool = titlesPool.substring(titlesPool.indexOf(`${sectionTitle}`))
 
-                // collect section contents
+
+                // collect section contents // If first section = no title
+                // 1. grab text section
+                let sectionTextStart = rawTextData.indexOf(`mf-section-${i}`);
+
+                let sectionText0;
+
+                if(i == 0){
+                    rawTextData = rawTextData.substring(sectionTextStart)
+                    let sectionTextEnd = rawTextData.indexOf('</section>')
+                    let rawText = rawTextData.substring(0, sectionTextEnd);
+                    
+                    // Filter text
+                    rawText = rawText.substring(rawText.indexOf('<p>'), rawText.indexOf('class="toc"'));
+                    rawText = rawText.split(`<b>`).join('');
+                    rawText = rawText.split(`</b>`).join('');
+
+                    let cleanText = '';
+                    let searchOn = true;
+
+                    function cleanTag(){
+                        
+                        while(searchOn){
+                            let start = rawText.indexOf('>');
+
+                            if(start == -1){
+                                searchOn = false
+                            }
+                            else{
+                                rawText = rawText.substring(start);
+                                let end = rawText.indexOf('<');
+
+                                let tempText = rawText.substring(1, end);
+
+                                cleanText = cleanText + tempText;
+
+                                rawText = rawText.substring(end+1);
+                            }
+
+                        }
+                        return cleanText;
+                    }
+
+                    sectionText0 = cleanTag();
+                    sectionTexts.push(sectionText0);
+
+                }
+
+                if(i > 0){
+                    // SAME FOR THE OTHER SECTIONS 
+                    // FIRST GET ALL SUB-TITLES THEN THE TEXT
+                    // \_(^_^)_/
+                    //    ( )
+                    //    / \
+                    //  
+                }
+
             }
+
+            let result = [sectionTitles, sectionTexts];
+            return result
 
         }
 
         const bioData = filterBio();
-        filterTextSection()
+        const mainTextData = filterTextSection();
+
+        //console.log(mainTextData)
 
         // json object 
         let jsonObject = {
