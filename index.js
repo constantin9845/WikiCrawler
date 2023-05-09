@@ -224,11 +224,13 @@ https.get(url, (response)=>{
                 }
             }
 
-            count = count - 2
+            count = count - 2;
 
             let titlesPool = rawTextData;
-            let sectionTitles = []
-            let sectionTexts = []
+            let sectionTitles = [];
+            let subSectionTitlesCollection = []
+            let subSectionTitles = [];
+            let sectionTexts = [];
             
 
             for(let i = 0; i < count; i++){
@@ -254,11 +256,13 @@ https.get(url, (response)=>{
                 // 1. grab text section
                 let sectionTextStart = rawTextData.indexOf(`mf-section-${i}`);
 
+                let currentSection = i;
+
                 let sectionText0;
 
                 if(i == 0){
-                    rawTextData = rawTextData.substring(sectionTextStart)
-                    let sectionTextEnd = rawTextData.indexOf('</section>')
+                    rawTextData = rawTextData.substring(sectionTextStart);
+                    let sectionTextEnd = rawTextData.indexOf('</section>');
                     let rawText = rawTextData.substring(0, sectionTextEnd);
                     
                     // Filter text
@@ -300,15 +304,71 @@ https.get(url, (response)=>{
                 if(i > 0){
                     // SAME FOR THE OTHER SECTIONS 
                     // FIRST GET ALL SUB-TITLES THEN THE TEXT
-                    // \_(^_^)_/
-                    //    ( )
-                    //    / \
-                    //  
+                    rawTextData = rawTextData.substring(sectionTextStart);
+                    let sectionTextEnd = rawTextData.indexOf('</section>');
+                    let rawText = rawTextData.substring(0, sectionTextEnd);
+
+                    let subTitlePool = rawText;
+
+                    // calc amount of sub titles => // 
+                    let sectionOccurs = '<h3>'
+                    let count = 0
+                    let searching = true
+
+                    while(searching){
+                        if(subTitlePool.includes(sectionOccurs)){
+                            count = count + 1;
+                            subTitlePool = subTitlePool.substring(subTitlePool.indexOf(sectionOccurs)+1);
+                        }
+                        else{
+                            searching = false
+                        }
+                    }
+
+                    subTitlePool = rawText;
+
+                    let startSubTitle;
+                    let endSubtitle;
+
+                    // grab sub titles
+                    for(let i = 0; i <= count; i++){
+                        startSubTitle = subTitlePool.indexOf(`<h3>`);
+                        endSubtitle = subTitlePool.indexOf('</h3>')+5;
+                        let subString = subTitlePool.substring(startSubTitle, endSubtitle);
+
+                        startSubTitle = subString.indexOf(`<span`);
+                        endSubtitle = subString.indexOf(`</span>`)+7;
+                        subString = subString.substring(startSubTitle, endSubtitle);
+
+                        startSubTitle = subString.indexOf('">');
+                        endSubtitle = subString.indexOf('</');
+                        subString = subString.substring(startSubTitle+1, endSubtitle);
+
+                        let subTitle = subString;
+
+
+                        if(subTitle.length > 0){
+                            if(subTitle != '\n'){
+                                subSectionTitles.push([currentSection, subTitle]);
+                            }
+                            
+                        }
+
+                        subTitlePool = subTitlePool.substring(subTitlePool.indexOf('</h3>')+5)
+
+                    }
+
+                    // grab sub texts
+                    // SUB TITLE READY 
+                    // NOW TEXTS
+                    // DEFINE HOW SUBTITLES AND SECTION TITLE WILL BE LOCATED IN TEXT
                 }
 
             }
 
-            let result = [sectionTitles, sectionTexts];
+            subSectionTitlesCollection.push(subSectionTitles)
+
+            let result = [sectionTitles, sectionTexts, subSectionTitlesCollection];
             return result
 
         }
@@ -316,7 +376,7 @@ https.get(url, (response)=>{
         const bioData = filterBio();
         const mainTextData = filterTextSection();
 
-        //console.log(mainTextData)
+        console.log(mainTextData[2])
 
         // json object 
         let jsonObject = {
