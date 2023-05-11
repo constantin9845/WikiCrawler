@@ -178,7 +178,7 @@ https.get(url, (response)=>{
 
                 let i = linkStringCollector.length-1;
                 while(i >= 0){
-                    if(linkStringCollector[i].length <= 1){
+                    if(linkStringCollector[i].length <= 3){
                         linkStringCollector.splice(i, 1)
                     }
                     i = i - 1;
@@ -297,7 +297,7 @@ https.get(url, (response)=>{
                     }
 
                     sectionText0 = cleanTag();
-                    sectionTexts.push(sectionText0);
+                    sectionTexts.push([0,sectionText0]);
 
                 }
 
@@ -357,13 +357,56 @@ https.get(url, (response)=>{
                         subTitlePool = subTitlePool.substring(subTitlePool.indexOf('</h3>')+5)
 
                     }
+                }
+            }
 
-                    // grab sub texts
-                    // SUB TITLE READY 
-                    // NOW TEXTS
-                    // DEFINE HOW SUBTITLES AND SECTION TITLE WILL BE LOCATED IN TEXT
+            rawTextData = mainData[2];
+
+
+            // text sections
+            for(let i = 1; i < count; i++){
+                // grab sub texts
+
+                let sectionTextStart = rawTextData.indexOf(`mf-section-${i}`);
+                rawTextData = rawTextData.substring(sectionTextStart);
+
+                let sectionTextEnd = rawTextData.indexOf('</section>');
+                rawText = rawTextData.substring(0, sectionTextEnd);
+
+                rawText = rawText.substring(rawText.indexOf('<p>'));
+
+                let cleanText = '';
+                let searchOn = true;
+
+                function cleanTag(){
+                    
+                    while(searchOn){
+                        let start = rawText.indexOf('>');
+
+                        if(start == -1){
+                            searchOn = false
+                        }
+                        else{
+                            rawText = rawText.substring(start);
+                            let end = rawText.indexOf('<');
+
+                            if(end == -1){
+                                searchOn = false
+                            }
+
+                            let tempText = rawText.substring(1, end);
+
+                            cleanText = cleanText + tempText;
+
+                            rawText = rawText.substring(end+1);
+                        }
+
+                    }
+                    return cleanText;
                 }
 
+                let tempText = cleanTag();
+                sectionTexts.push([i, tempText]);
             }
 
             subSectionTitlesCollection.push(subSectionTitles)
@@ -376,17 +419,27 @@ https.get(url, (response)=>{
         const bioData = filterBio();
         const mainTextData = filterTextSection();
 
-        console.log(mainTextData[2])
 
         // json object 
         let jsonObject = {
             header: {
                 headTitle: mainTitle,
+            },
+            bioBox: {
+                imageLink: bioData[0],
+                imageCaption: bioData[1],
+                labels: bioData[2],
+                links: bioData[2][1]
+            },
+            body: {
+                subTitle: mainTextData[0],
+                textSubtitles : mainTextData[2],
+                textSections : mainTextData[1]
             }
         }
 
         // DATA --> JSON FILE
-        fs.writeFileSync('data.json', JSON.stringify(jsonObject));
+        fs.writeFileSync('data.json', JSON.stringify(jsonObject, null, 2));
 
 
         fs.writeFile('data.txt', mainData[1], (err)=>{
